@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0f172a" />
+<title>AvilaOps Command Center</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--card2:#334155;--txt:#f1f5f9;--mut:#94a3b8;--acc:#38bdf8;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--purple:#a78bfa}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--txt);padding-bottom:90px;-webkit-tap-highlight-color:transparent}
+  header{padding:16px;display:flex;justify-content:space-between;align-items:center}
+  .hbtn{background:var(--card);border:none;color:var(--txt);border-radius:10px;width:34px;height:34px;font-size:1rem;cursor:pointer}
+  .hbtn:hover{background:var(--card2)}
+  h1{font-size:1.15rem}
+  h1 span{color:var(--acc)}
+  .sub{font-size:.72rem;color:var(--mut)}
+  main{padding:0 16px}
+  .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+  .kpi{background:var(--card);border-radius:14px;padding:12px}
+  .kpi .v{font-size:1.5rem;font-weight:700}
+  .kpi .l{font-size:.7rem;color:var(--mut);text-transform:uppercase;letter-spacing:.05em}
+  .tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{background:var(--card);border:none;color:var(--mut);padding:8px 14px;border-radius:20px;font-size:.8rem;white-space:nowrap;cursor:pointer}
+  .tab.on{background:var(--acc);color:#082f49;font-weight:700}
+  .item{background:var(--card);border-radius:14px;padding:12px 14px;margin-bottom:10px;border-left:4px solid var(--acc)}
+  .item.stale{border-left-color:var(--bad)}
+  .item .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+  .item .co{font-weight:700;font-size:.95rem}
+  .item .role{color:var(--mut);font-size:.8rem}
+  .item .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .pill{font-size:.68rem;padding:3px 9px;border-radius:12px;background:var(--card2);color:var(--mut)}
+  .pill.remote{background:#052e16;color:var(--ok)}
+  .pill.mi{background:#1e1b4b;color:var(--purple)}
+  .pill.hi{background:#422006;color:var(--warn)}
+  .pill.stale{background:#450a0a;color:var(--bad)}
+  .item .fu{font-size:.72rem;margin-top:8px;color:var(--warn)}
+  .item .acts{display:flex;gap:8px;margin-top:10px}
+  .item button{background:var(--card2);color:var(--txt);border:none;border-radius:8px;padding:6px 10px;font-size:.72rem;cursor:pointer}
+  .item button.del{color:var(--bad)}
+  .fab{position:fixed;bottom:20px;right:20px;width:58px;height:58px;border-radius:50%;background:var(--acc);color:#082f49;font-size:2rem;border:none;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.4);z-index:5}
+  dialog{border:none;border-radius:18px;background:var(--card);color:var(--txt);padding:20px;width:min(92vw,420px)}
+  dialog::backdrop{background:rgba(0,0,0,.6)}
+  dialog h2{font-size:1rem;margin-bottom:14px}
+  label{display:block;font-size:.72rem;color:var(--mut);margin:10px 0 4px}
+  input,select{width:100%;background:var(--card2);color:var(--txt);border:1px solid #475569;border-radius:10px;padding:10px;font-size:.9rem}
+  .btns{display:flex;gap:10px;margin-top:16px}
+  .btns button{flex:1;padding:12px;border-radius:12px;border:none;font-weight:700;cursor:pointer}
+  #save{background:var(--acc);color:#082f49}
+  #cancel{background:var(--card2);color:var(--txt)}
+  .empty{text-align:center;color:var(--mut);padding:40px 10px;font-size:.85rem}
+  .note{font-size:.7rem;color:var(--mut);text-align:center;padding:10px}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Avila<span>Ops</span></h1><div class="sub">Job Search Command Center</div></div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button class="hbtn" onclick="exportData()" title="Export backup">&#8675;</button>
+    <button class="hbtn" onclick="$('imp').click()" title="Import backup">&#8673;</button>
+    <div class="sub" id="date"></div>
+  </div>
+</header>
+<main>
+  <div class="kpis" id="kpis"></div>
+  <div class="tabs" id="tabs"></div>
+  <div id="list"></div>
+  <div class="note">Data stays on this device. Use &#8675; in the header for regular backups.</div>
+</main>
+<button class="fab" onclick="openForm()">+</button>
+<input type="file" id="imp" accept="application/json,.json" style="display:none" />
+<dialog id="dlg">
+  <h2 id="dlgTitle">New Entry</h2>
+  <form id="frm" onsubmit="return saveItem(event)">
+    <label>Type</label>
+    <select id="f_type">
+      <option value="app">Application</option><option value="contact">Networking Contact</option>
+      <option value="interview">Interview</option><option value="offer">Offer</option><option value="skill">Skill to Learn</option>
+    </select>
+    <label>Company / Skill</label><input id="f_co" required />
+    <label>Role / Detail</label><input id="f_role" />
+    <label>Status</label><select id="f_status"></select>
+    <label>Source</label>
+    <select id="f_src"><option>Handshake</option><option>LinkedIn</option><option>Referral</option><option>Other</option></select>
+    <label>Location</label><input id="f_loc" placeholder="e.g. Ann Arbor, MI / Remote" />
+    <div style="display:flex;gap:10px">
+      <div style="flex:1"><label>Remote?</label><select id="f_remote"><option value="no">No</option><option value="yes">Yes</option></select></div>
+      <div style="flex:1"><label>Applied</label><input type="date" id="f_date" /></div>
+    </div>
+    <label>Follow-up date (auto: applied +7 days)</label><input type="date" id="f_fu" />
+    <label>Notes</label><input id="f_notes" />
+    <div class="btns"><button type="button" id="cancel" onclick="dlg.close()">Cancel</button><button id="save" type="submit">Save</button></div>
+  </form>
+</dialog>
+<script>
+const STATUSES={app:["Applied","Interviewing","Rejected","Offer","Ghosted"],contact:["Connected","Follow up","Referred"],interview:["Scheduled","Passed","Rejected"],offer:["Negotiating","Accepted","Declined"],skill:["Learning","Practicing","Done"]};
+let items=JSON.parse(localStorage.getItem("avilaops")||"[]"),tab="app",editId=null;
+const $=id=>document.getElementById(id);
+const dlg=$("dlg");
+$("date").textContent=new Date().toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"});
+function priority(it){let p=0;if(it.remote==="yes")p+=5;/\bmi\b|michigan/i.test(it.loc||"")&&(p+=5);it.src==="Referral"&&p++;(it.status==="Interviewing"||it.status==="Scheduled")&&p+=2;return p}
+function isStale(it){if(tab!=="app")return false;if(["Offer","Rejected","Ghosted","Accepted","Declined"].includes(it.status))return false;const fu=new Date(it.fu||it.date);return fu<(new Date()-7*864e5)}
+function save(){localStorage.setItem("avilaops",JSON.stringify(items))}
+function renderKPIs(){
+  const apps=items.filter(i=>i.type==="app");
+  const responded=apps.filter(i=>["Interviewing","Offer","Rejected","Accepted"].includes(i.status)).length;
+  const rr=apps.length?Math.round(responded/apps.length*100):0;
+  const week=new Date()-7*864e5;
+  const momentum=items.filter(i=>new Date(i.ts||i.date)>week).length;
+  const fuDue=apps.filter(i=>{const d=new Date(i.fu||i.date);return d<=new Date()&&!["Offer","Rejected","Ghosted","Accepted","Declined"].includes(i.status)}).length;
+  const k=[["Response Rate",rr+"%"],["This Week",momentum+" added"],["Follow-ups Due",fuDue],["Active Apps",apps.filter(i=>!["Rejected","Ghosted","Declined"].includes(i.status)).length]];
+  $("kpis").innerHTML=k.map(x=>`<div class="kpi"><div class="v">${x[1]}</div><div class="l">${x[0]}</div></div>`).join("");
+}
+function renderTabs(){
+  const t=[["app","Applications"],["contact","Contacts"],["interview","Interviews"],["offer","Offers"],["skill","Skills"]];
+  $("tabs").innerHTML=t.map(x=>`<button class="tab ${tab===x[0]?"on":""}" onclick="tab='${x[0]}';render()">${x[0]==="app"?"\u{1F4CB} ":x[0]==="contact"?"\u{1F91D} ":x[0]==="interview"?"\u{1F3A4} ":x[0]==="offer"?"\u{1F3C6} ":"\u{1F4DA} "}${x[1]}</button>`).join("");
+}
+function render(){
+  renderKPIs();renderTabs();
+  const list=items.filter(i=>i.type===tab).sort((a,b)=>priority(b)-priority(a)||new Date(b.ts)-new Date(a.ts));
+  $("list").innerHTML=list.length?list.map(i=>{
+    const st=isStale(i),p=priority(i);
+    return `<div class="item ${st?"stale":""}">
+      <div class="top"><div><div class="co">${esc(i.co)}</div><div class="role">${esc(i.role||"")}</div></div><div class="sub">${esc(i.status)}</div></div>
+      <div class="meta">
+        <span class="pill">${esc(i.src)}</span>
+        ${i.remote==="yes"?'<span class="pill remote">Remote</span>':""}
+        ${/michigan|\bmi\b/i.test(i.loc||"")?'<span class="pill mi">Michigan</span>':""}
+        ${p>=5?`<span class="pill hi">Priority ${p}</span>`:""}
+        ${st?'<span class="pill stale">Stale \u2014 follow up!</span>':""}
+        ${i.loc&&!/remote/i.test(i.loc)?`<span class="pill">${esc(i.loc)}</span>`:""}
+      </div>
+      ${i.fu?`<div class="fu">\u23F0 Follow-up: ${i.fu}</div>`:""}
+      ${i.notes?`<div class="fu" style="color:var(--mut)">${esc(i.notes)}</div>`:""}
+      <div class="acts"><button onclick="openForm('${i.id}')">Edit</button><button class="del" onclick="del('${i.id}')">Delete</button></div>
+    </div>`}).join(""):`<div class="empty">Nothing here yet.<br>Tap + to add your first ${tab==="app"?"application":tab}.</div>`;
+}
+function esc(s){return String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function del(id){if(confirm("Delete this entry?")){items=items.filter(i=>i.id!==id);save();render()}}
+function openForm(id){
+  editId=id||null;
+  const it=items.find(x=>x.id===id)||{};
+  $("dlgTitle").textContent=id?"Edit Entry":"New Entry";
+  $("f_type").value=it.type||tab;$("f_co").value=it.co||"";$("f_role").value=it.role||"";
+  $("f_src").value=it.src||"Handshake";$("f_loc").value=it.loc||"";
+  $("f_remote").value=it.remote||"no";$("f_date").value=it.date||new Date().toISOString().slice(0,10);
+  $("f_notes").value=it.notes||"";
+  syncStatus(it.status);$("f_fu").value=it.fu||autoFU($("f_date").value);
+  dlg.showModal();
+}
+function syncStatus(cur){
+  const t=$("f_type").value;
+  $("f_status").innerHTML=STATUSES[t].map(s=>`<option ${s===cur?"selected":""}>${s}</option>`).join("");
+}
+function autoFU(d){if(!d)return"";const x=new Date(d);x.setDate(x.getDate()+7);return x.toISOString().slice(0,10)}
+$("f_type").onchange=()=>syncStatus();
+$("f_date").oninput=e=>{$("f_fu").value=autoFU(e.target.value)};
+function saveItem(ev){
+  ev.preventDefault();
+  const data={type:$("f_type").value,co:$("f_co").value,role:$("f_role").value,status:$("f_status").value,
+    src:$("f_src").value,loc:$("f_loc").value,remote:$("f_remote").value,date:$("f_date").value,fu:$("f_fu").value,notes:$("f_notes").value};
+  if(editId){Object.assign(items.find(i=>i.id===editId),data)}else{items.push({...data,id:crypto.randomUUID(),ts:Date.now()})}
+  save();dlg.close();render();return false;
+}
+function exportData(){
+  const blob=new Blob([JSON.stringify(items,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="avilaops-backup-"+new Date().toISOString().slice(0,10)+".json";
+  a.click();URL.revokeObjectURL(a.href);
+}
+$("imp").addEventListener("change",e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{try{
+    const data=JSON.parse(r.result);
+    if(!Array.isArray(data))throw 0;
+    const ids=new Set(items.map(i=>i.id));
+    const merged=items.concat(data.filter(i=>i.id&&!ids.has(i.id)));
+    items=merged;save();render();
+    alert("Imported. "+items.length+" total entries.");
+  }catch{alert("That file isn't a valid AvilaOps backup.")}};
+  r.readAsText(f);e.target.value="";
+});
+render();
+</script>
+</body>
+</html>
